@@ -1,10 +1,7 @@
 use tracing::error as eprintln;
 
-use error_vs::{
-    err_struct, err_from
-};
+use error_vs::{err_from, err_struct};
 use std::fs;
-
 
 err_struct!(ErrorC);
 fn errors_c() -> Result<String, ErrorC> {

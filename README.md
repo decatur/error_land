@@ -10,9 +10,10 @@ This repo proposes a dead simple solution such that
 
 * The question mark operator [?](https://doc.rust-lang.org/reference/expressions/operator-expr.html#the-question-mark-operator) just works.
 * Errors are part of the tracing and are never swallowed.
-* No need for `.context("")` clutter.
 * For each method/function, declare up front which Errors are allowed to be propagated.
+* No need for `.context("")` clutter.
 * No need to collect a backtrace and fumble with `RUST(_LIB)_BACKTRACE` or `debug = true` in release mode
+* No need to mess with `panic::set_hook` to [convert error post mortem output to structured log](https://stackoverflow.com/questions/78708247)
 
 # How does it work
 
@@ -26,8 +27,8 @@ match expr {
 ```
 
 The only way to inject custom behaviour is therefore the `e.into()` part.
-Because `From<T> for U` implies `Into<U> for T`, we simply have to generate the `From` trait for all allowed error propagations.
-
+Because `From<T> for U` implies `Into<U> for T`, we simply have to generate a `From` trait implemenation for all allowed error propagations.
+In the generated `From` impl, we use `#[track_caller]` to output [file, line and column](https://doc.rust-lang.org/std/panic/struct.Location.html).
 
 # Kitchen Sink Resources
 
