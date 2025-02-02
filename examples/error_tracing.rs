@@ -1,51 +1,36 @@
-use tracing::error as eprintln;
+use tracing::{error as eprintln, info};
 
 use error_vs::{err_from, err_struct};
 use std::fs;
+use tracing_subscriber::fmt::time;
 
-err_struct!(ErrorC);
-fn errors_c() -> Result<String, ErrorC> {
-    let path = "./foo/bar.txt";
-    let data = fs::read_to_string(path).map_err(|e| ErrorC(format!("{} {}", path, e)))?;
+err_struct!(ReadFileError);
+fn read_file(path: &str) -> Result<String, ReadFileError> {
+    let data = fs::read_to_string(path)?;
     if data.trim().len() == 0 {
-        Err(ErrorC(format!("{} Was empty", path)))
+        Err(ReadFileError("File was empty".to_owned()))
     } else {
         Ok(data)
     }
 }
 
-err_struct!(ErrorC => ErrorB);
-fn errors_b() -> Result<(), ErrorB> {
-    let _data = errors_c()?;
-    let _data = errors_c();
-    Ok(())
+struct ParseOutput;
+err_struct!(ReadFileError => ParseError);
+fn parse_config(path: &str) -> Result<ParseOutput, ParseError> {
+    info!("Reading and parsing {} ...", path);
+    _ = read_file(path)?;
+    // Do the parsing...
+    Ok(ParseOutput)
 }
 
-err_struct!(ErrorB, ErrorC => ErrorA);
-fn errors_a() -> Result<(), ErrorA> {
-    errors_b()?;
-    Ok(())
-}
-
-err_struct!(ErrorB => ErrorD);
-fn errors_d() -> Result<(), ErrorD> {
-    errors_b()?;
-    errors_b()?;
-    Ok(())
-}
-
-err_struct!(ErrorD => ErrorMain);
+err_struct!(ParseError => ErrorMain);
 fn main() -> Result<(), ErrorMain> {
     let subscriber = tracing_subscriber::fmt()
-        .compact()
+        .pretty()
         .with_target(false)
         .finish();
-    tracing::subscriber::set_global_default(subscriber).expect("set tracing subscriber");
+    tracing::subscriber::set_global_default(subscriber)?;
 
-    if let Err(err) = errors_a() {
-        println!("{:?}", err);
-    }
-
-    errors_d()?;
+    _ = parse_config("./foo/bar.toml")?;
     Ok(())
 }

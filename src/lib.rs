@@ -29,14 +29,14 @@ macro_rules! err_struct {
 macro_rules! err_from {
     ($source: ident, $target: ident) => {
         impl From<$source> for $target {
-            #[track_caller]
+            // #[track_caller]
             fn from(error: $source) -> Self {
                 let caller = std::panic::Location::caller();
                 eprintln!(
-                    "{} {} {}",
+                    "{} {}",
                     std::any::type_name::<$source>(),
                     //std::any::type_name::<Self>(),
-                    caller,
+                    //std::panic::Location::caller(),
                     error.0
                 );
                 Self(error.0)
