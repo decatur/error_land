@@ -1,8 +1,9 @@
-use tracing::{error as eprintln, info};
+use error_vs::CustomLayer;
+use tracing::{error,  info };
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use error_vs::{err_from, err_struct};
 use std::fs;
-use tracing_subscriber::fmt::time;
 
 err_struct!(ReadFileError);
 fn read_file(path: &str) -> Result<String, ReadFileError> {
@@ -25,11 +26,15 @@ fn parse_config(path: &str) -> Result<ParseOutput, ParseError> {
 
 err_struct!(ParseError => ErrorMain);
 fn main() -> Result<(), ErrorMain> {
-    let subscriber = tracing_subscriber::fmt()
-        .pretty()
-        .with_target(false)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+    // let subscriber = tracing_subscriber::fmt()
+    //     .pretty()
+    //     .with_target(false)
+    //     .with_file(false)
+    //     .with_line_number(false)
+    //     .finish();
+    // tracing::subscriber::set_global_default(subscriber)?;
+
+    tracing_subscriber::registry().with(CustomLayer).init();
 
     _ = parse_config("./foo/bar.toml")?;
     Ok(())
