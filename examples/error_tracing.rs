@@ -1,8 +1,8 @@
-use error_vs::CustomLayer;
-use tracing::{error,  info };
+use error_landscape::{JsonLayer, PrettyLayer};
+use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use error_vs::{err_from, err_struct};
+use error_landscape::{err_from, err_struct};
 use std::fs;
 
 err_struct!(ReadFileError);
@@ -15,27 +15,28 @@ fn read_file(path: &str) -> Result<String, ReadFileError> {
     }
 }
 
-struct ParseOutput;
 err_struct!(ReadFileError => ParseError);
-fn parse_config(path: &str) -> Result<ParseOutput, ParseError> {
-    info!("Reading and parsing {} ...", path);
-    _ = read_file(path)?;
-    // Do the parsing...
-    Ok(ParseOutput)
+fn parse_single_float(path: &str) -> Result<f64, ParseError> {
+    info!(path, "Reading and parsing file");
+    Ok(read_file(path)?.parse::<f64>()?)
 }
 
 err_struct!(ParseError => ErrorMain);
 fn main() -> Result<(), ErrorMain> {
-    // let subscriber = tracing_subscriber::fmt()
-    //     .pretty()
-    //     .with_target(false)
-    //     .with_file(false)
-    //     .with_line_number(false)
-    //     .finish();
-    // tracing::subscriber::set_global_default(subscriber)?;
+    match std::env::var("LOG_FORMAT") {
+        Ok(format) if format == "json" => tracing_subscriber::registry().with(JsonLayer).init(),
+        _ => tracing_subscriber::registry().with(PrettyLayer).init(),
+    };
 
-    tracing_subscriber::registry().with(CustomLayer).init();
+    _ = parse_single_float("./float_valid.txt")?;
 
-    _ = parse_config("./foo/bar.toml")?;
+    _ = parse_single_float("./float_invalid.txt").unwrap_or_else(|_err| {
+        warn!("Continue with default value");
+        f64::default()
+    });
+
+    _ = parse_single_float("./do_not_exist.txt")?;
+
+    info!("We do not get here");
     Ok(())
 }

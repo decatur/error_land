@@ -1,9 +1,4 @@
-mod loc_layer;
-mod loc_error;
 
-pub use loc_layer::{JsonLayer, PrettyLayer};
-
-/*
 /// A macro called e.g. as `err_struct(A, B => C)` will define a public struct by name `C` and implement `From<A> for C` and `From<B> for C`.
 /// The from types are optional, and `err_struct(A, B => C)` equates to `err_struct(A, B => C)`, `err_from(A, C)` and `err_from(B, C)`.
 #[macro_export]
@@ -15,10 +10,24 @@ macro_rules! err_struct {
         impl $target {
             #[track_caller]
             #[inline(always)]
-            pub fn new(msg: String) -> Self {
+            pub fn msg(msg: String) -> Self {
                 let caller = std::panic::Location::caller().to_string();
-                error!(caller=caller, message=msg);
+                tracing::error!(caller=caller, message=msg);
                 $target(msg)
+            }
+
+            #[track_caller]
+            #[inline(always)]
+            pub fn silent(msg: String) -> Self {
+                $target(msg)
+            }
+
+            #[track_caller]
+            #[inline(always)]
+            pub fn loc() -> Self {
+                let caller = std::panic::Location::caller().to_string();
+                tracing::error!(caller=caller);
+                $target("".to_owned())
             }
         }
 
@@ -37,7 +46,7 @@ macro_rules! err_struct {
             fn from(e: E) -> Self {
                 // let caller = std::panic::Location::caller().to_string();
                 // error!(caller=caller, message=e.to_string());
-                Self::new(e.to_string())
+                Self::msg(e.to_string())
             }
         }
     };
@@ -57,12 +66,12 @@ macro_rules! err_from {
         impl From<$source> for $target {
             #[track_caller]
             fn from(error: $source) -> Self {
-                let caller = std::panic::Location::caller().to_string();
-                error!(caller=caller
-                //    , message=error.to_string()
-                );
-                Self(error.to_string())
+                // let caller = std::panic::Location::caller().to_string();
+                // tracing::error!(caller=caller
+                // //    , message=error.to_string()
+                // );
+                Self::silent(error.to_string())
             }
         }
     };
-}*/
+}

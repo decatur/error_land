@@ -1,4 +1,4 @@
-use error_vs::CustomLayer;
+use error_landscape::JsonLayer;
 use tracing::{error,  info };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -33,7 +33,7 @@ fn parse_config(path: &str) -> Result<ParseOutput> {
 }
 
 fn main() -> Result<()> {
-    tracing_subscriber::registry().with(CustomLayer).init();
+    tracing_subscriber::registry().with(JsonLayer).init();
 
     _ = parse_config("./foo/bar.toml")?;
     Ok(())

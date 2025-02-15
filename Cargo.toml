@@ -1,6 +1,6 @@
 [package]
-name        = "error_vs"
-description = "error_vs"
+name        = "error_landscape"
+description = "error_landscape"
 authors     = [ "decatur.de" ]
 edition = "2021"
 publish     = false
@@ -14,3 +14,4 @@ serde_json = "1"
 snafu = "0.8.5"
 tracing            = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = [ "ansi", "env-filter", "fmt", "json", "registry", "smallvec" ], default-features = false }
+tz-rs = "0.7.0"
