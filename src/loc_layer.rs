@@ -1,6 +1,5 @@
 // Source: https://github.com/bryanburgers/tracing-blog-post/blob/main/examples/figure_3/custom_layer.rs
 
-use std::collections::BTreeMap;
 use tracing::Level;
 use tracing_subscriber::Layer;
 use tz::UtcDateTime;
@@ -16,54 +15,54 @@ where
         event: &tracing::Event<'_>,
         _ctx: tracing_subscriber::layer::Context<'_, S>,
     ) {
-        // Covert the values into a JSON object
-        let mut fields = BTreeMap::new();
-        let mut visitor = JsonVisitor(&mut fields);
-        event.record(&mut visitor);
+        let now = UtcDateTime::now().unwrap();
+        let level = event.metadata().level().to_string();
+        print!("{{\"time\":\"{}\"", now);
+        print!(", \"level\":\"{}\"", level);
 
-        let name = if let Some(caller) = fields.remove("caller") {
-            caller.as_str().unwrap().to_owned()
+        if event.fields().any(|field| field.name() == "caller") {
+            let mut visitor = MessageVisitor {
+                message: None,
+                caller: None,
+            };
+            event.record(&mut visitor);
+            let name = visitor.caller.unwrap();
+            print!(", \"name\":\"{}\"", name);
+
+            if let Some(message) = visitor.message {
+                print!(", \"message\":\"{}\"", message);
+            }
         } else {
-            event.metadata().name().to_owned()
-        };
+            print!(", \"name\":\"{}\"", event.metadata().name());
+            let mut visitor = JsonVisitor;
+            event.record(&mut visitor);
+        }
 
-        let level = event.metadata().level();
-        let output = serde_json::json!({
-            //"target": event.metadata().target(),
-            "name": name,
-            "level": level.as_str(),
-            "fields": fields,
-        });
-        println!("{}", serde_json::to_string_pretty(&output).unwrap());
+        println!("}}");
     }
 }
 
-struct JsonVisitor<'a>(&'a mut BTreeMap<String, serde_json::Value>);
+struct JsonVisitor;
 
-impl<'a> tracing::field::Visit for JsonVisitor<'a> {
+impl tracing::field::Visit for JsonVisitor {
     fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
-        self.0
-            .insert(field.name().to_string(), serde_json::json!(value));
+        print!(", \"{}\":{}", field.name(), value);
     }
 
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        self.0
-            .insert(field.name().to_string(), serde_json::json!(value));
+        print!(", \"{}\":{}", field.name(), value);
     }
 
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        self.0
-            .insert(field.name().to_string(), serde_json::json!(value));
+        print!(", \"{}\":{}", field.name(), value);
     }
 
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
-        self.0
-            .insert(field.name().to_string(), serde_json::json!(value));
+        print!(", \"{}\":{}", field.name(), value);
     }
 
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        self.0
-            .insert(field.name().to_string(), serde_json::json!(value));
+        print!(", \"{}\":\"{}\"", field.name(), value);
     }
 
     fn record_error(
@@ -71,17 +70,11 @@ impl<'a> tracing::field::Visit for JsonVisitor<'a> {
         field: &tracing::field::Field,
         value: &(dyn std::error::Error + 'static),
     ) {
-        self.0.insert(
-            field.name().to_string(),
-            serde_json::json!(value.to_string()),
-        );
+        print!(", \"{}\":\"{}\"", field.name(), value);
     }
 
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        self.0.insert(
-            field.name().to_string(),
-            serde_json::json!(format!("{:?}", value)),
-        );
+        print!(", \"{}\":\"{:?}\"", field.name(), value);
     }
 }
 
@@ -121,7 +114,7 @@ where
             print!("{} {} {}", now, level, name);
             let mut visitor = PrettyVisitor();
             event.record(&mut visitor);
-            println!("");
+            println!();
         }
     }
 }

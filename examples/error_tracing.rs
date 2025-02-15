@@ -22,9 +22,10 @@ fn parse_single_float(path: &str) -> Result<f64, ParseError> {
 
 err_struct!(ParseError => ErrorMain);
 fn main() -> Result<(), ErrorMain> {
+    let registry = tracing_subscriber::registry();
     match std::env::var("LOG_FORMAT") {
-        Ok(format) if format == "json" => tracing_subscriber::registry().with(JsonLayer).init(),
-        _ => tracing_subscriber::registry().with(PrettyLayer).init(),
+        Ok(format) if format == "json" => registry.with(JsonLayer).init(),
+        _ => registry.with(JsonLayer).init(), //registry.with(PrettyLayer).init(),
     };
 
     _ = parse_single_float("./float_valid.txt")?;
