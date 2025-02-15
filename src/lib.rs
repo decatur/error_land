@@ -1,5 +1,5 @@
-mod loc_layer;
 mod loc_error;
+mod loc_layer;
 
 pub use loc_layer::{JsonLayer, PrettyLayer};
 

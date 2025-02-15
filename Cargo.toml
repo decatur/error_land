@@ -1,6 +1,6 @@
 [package]
-name        = "error_landscape"
-description = "error_landscape"
+name        = "error_land"
+description = "foray in the error landscape of Rust"
 authors     = [ "decatur.de" ]
 edition = "2021"
 publish     = false

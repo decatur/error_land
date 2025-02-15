@@ -1,17 +1,15 @@
-use error_landscape::JsonLayer;
-use tracing::{error,  info };
+use error_land::JsonLayer;
+use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use anyhow::Result;
 use std::fs::{self};
 
-
-
 #[track_caller]
 #[inline(always)]
 fn log_error(msg: &str) {
     let caller = std::panic::Location::caller();
-    error!(caller = caller.to_string(), message=msg);
+    error!(caller = caller.to_string(), message = msg);
 }
 
 fn read_file(path: &str) -> Result<String> {

@@ -1,8 +1,7 @@
-use error_landscape::{JsonLayer, PrettyLayer};
+use error_land::{err_from, err_struct, JsonLayer, PrettyLayer};
 use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use error_landscape::{err_from, err_struct};
 use std::fs;
 
 err_struct!(ReadFileError);
