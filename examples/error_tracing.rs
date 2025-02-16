@@ -25,7 +25,7 @@ fn main() -> Result<(), ErrorMain> {
     let registry = tracing_subscriber::registry();
     match std::env::var("LOG_FORMAT") {
         Ok(format) if format == "json" => registry.with(JsonLayer).init(),
-        _ => registry.with(JsonLayer).init(), //registry.with(PrettyLayer).init(),
+        _ => registry.with(PrettyLayer).init(), //.with(JsonLayer).init(),
     };
 
     _ = parse_single_float("./float_valid.txt")?;

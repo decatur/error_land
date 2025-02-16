@@ -1,9 +1,25 @@
-// Source: https://github.com/bryanburgers/tracing-blog-post/blob/main/examples/figure_3/custom_layer.rs
+// This module implements a workaround for the tracing crate which allows to use <https://doc.rust-lang.org/reference/attributes/codegen.html#r-attributes.codegen.track_caller>
+// A tracing::Event (such as created by the event! macro) does hold metadata and fields. The metadata contains level and name.
+// The name includes the line. Sadly. tis location information cannot be overwritten. Also you cannot just instantiate a tracing::Event and fire it.
+// The workaround adds caller=std::panic::Location::caller() whenever an event is fired via a tracing macro.
+// Then custom layers in this modules overwrite the metadata name with the caller field whenever present.
+// Probably, the performance characteristics of the tracing crate is responsible for its idiosyncratic design.
+// You may be better off not using the tracing crate.
+
+use std::{
+    fmt,
+    io::{BufWriter, Write},
+};
 
 use tracing::Level;
 use tracing_subscriber::Layer;
 use tz::UtcDateTime;
 
+fn write(buf: &mut BufWriter<Vec<u8>>, args: fmt::Arguments<'_>) {
+    if let Err(e) = buf.write_fmt(args) {
+        panic!("failed writing to buffer: {e}");
+    }
+}
 pub struct JsonLayer;
 
 impl<S> Layer<S> for JsonLayer
@@ -17,52 +33,82 @@ where
     ) {
         let now = UtcDateTime::now().unwrap();
         let level = event.metadata().level().to_string();
-        print!("{{\"time\":\"{}\"", now);
-        print!(", \"level\":\"{}\"", level);
 
-        if event.fields().any(|field| field.name() == "caller") {
+        let mut buf = BufWriter::new(Vec::new());
+
+        write(&mut buf, format_args!("{{\"time\":\"{}\"", now));
+        write(&mut buf, format_args!(", \"level\":\"{}\"", level));
+
+        let mut buf = if event.fields().any(|field| field.name() == "caller") {
             let mut visitor = MessageVisitor {
                 message: None,
                 caller: None,
             };
             event.record(&mut visitor);
             let name = visitor.caller.unwrap();
-            print!(", \"name\":\"{}\"", name);
+            write(&mut buf, format_args!(", \"name\":\"{}\"", name));
 
             if let Some(message) = visitor.message {
-                print!(", \"message\":\"{}\"", message);
+                write(&mut buf, format_args!(", \"message\":\"{}\"", message));
             }
+            buf
         } else {
-            print!(", \"name\":\"{}\"", event.metadata().name());
-            let mut visitor = JsonVisitor;
+            write(
+                &mut buf,
+                format_args!(", \"name\":\"{}\"", event.metadata().name()),
+            );
+            let mut visitor = JsonVisitor { buf };
             event.record(&mut visitor);
+            visitor.buf
+        };
+        buf.write_all(b"}\n").unwrap();
+        if let Err(e) = std::io::stdout()
+            .lock()
+            .write_all(&buf.into_inner().expect("flushing buffer"))
+        {
+            panic!("failed writing to stdout: {}", e);
         }
-
-        println!("}}");
     }
 }
 
-struct JsonVisitor;
+struct JsonVisitor {
+    buf: BufWriter<Vec<u8>>,
+}
 
 impl tracing::field::Visit for JsonVisitor {
     fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
-        print!(", \"{}\":{}", field.name(), value);
+        write(
+            &mut self.buf,
+            format_args!(", \"{}\":{}", field.name(), value),
+        );
     }
 
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        print!(", \"{}\":{}", field.name(), value);
+        write(
+            &mut self.buf,
+            format_args!(", \"{}\":{}", field.name(), value),
+        );
     }
 
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        print!(", \"{}\":{}", field.name(), value);
+        write(
+            &mut self.buf,
+            format_args!("\"{}\":{}", field.name(), value),
+        );
     }
 
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
-        print!(", \"{}\":{}", field.name(), value);
+        write(
+            &mut self.buf,
+            format_args!(", \"{}\":{}", field.name(), value),
+        );
     }
 
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        print!(", \"{}\":\"{}\"", field.name(), value);
+        write(
+            &mut self.buf,
+            format_args!(", \"{}\":\"{}\"", field.name(), value),
+        );
     }
 
     fn record_error(
@@ -70,11 +116,17 @@ impl tracing::field::Visit for JsonVisitor {
         field: &tracing::field::Field,
         value: &(dyn std::error::Error + 'static),
     ) {
-        print!(", \"{}\":\"{}\"", field.name(), value);
+        write(
+            &mut self.buf,
+            format_args!(", \"{}\":\"{}\"", field.name(), value),
+        );
     }
 
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        print!(", \"{}\":\"{:?}\"", field.name(), value);
+        write(
+            &mut self.buf,
+            format_args!(", \"{}\":\"{:?}\"", field.name(), value),
+        );
     }
 }
 
@@ -97,7 +149,9 @@ where
             format!("\x1b[92m{:^5}\x1b[0m", level)
         };
 
-        if event.fields().any(|field| field.name() == "caller") {
+        let mut buf = BufWriter::new(Vec::new());
+
+        let mut buf = if event.fields().any(|field| field.name() == "caller") {
             let mut visitor = MessageVisitor {
                 message: None,
                 caller: None,
@@ -105,16 +159,29 @@ where
             event.record(&mut visitor);
             let name = visitor.caller.unwrap();
             if let Some(message) = visitor.message {
-                println!("{} {} {} {}", now, level, name, message);
+                write(
+                    &mut buf,
+                    format_args!("{} {} {} {}", now, level, name, message),
+                );
             } else {
-                println!("{} {} {}", now, level, name);
+                write(&mut buf, format_args!("{} {} {}", now, level, name));
             }
+
+            buf
         } else {
             let name = event.metadata().name();
-            print!("{} {} {}", now, level, name);
-            let mut visitor = PrettyVisitor();
+            write(&mut buf, format_args!("{} {} {}", now, level, name));
+            let mut visitor = PrettyVisitor { buf };
             event.record(&mut visitor);
-            println!();
+            visitor.buf
+        };
+
+        buf.write_all(b"\n").unwrap();
+        if let Err(e) = std::io::stdout()
+            .lock()
+            .write_all(&buf.into_inner().expect("flushing buffer"))
+        {
+            panic!("failed writing to stdout: {}", e);
         }
     }
 }
@@ -136,14 +203,19 @@ impl tracing::field::Visit for MessageVisitor {
     fn record_debug(&mut self, _field: &tracing::field::Field, _value: &dyn std::fmt::Debug) {}
 }
 
-struct PrettyVisitor();
+struct PrettyVisitor {
+    buf: BufWriter<Vec<u8>>,
+}
 
 impl tracing::field::Visit for PrettyVisitor {
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        print!(" {}={};", field.name(), value);
+        write(&mut self.buf, format_args!(" {}={};", field.name(), value));
     }
 
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        print!(" {}={:?};", field.name(), value);
+        write(
+            &mut self.buf,
+            format_args!(" {}={:?};", field.name(), value),
+        );
     }
 }
