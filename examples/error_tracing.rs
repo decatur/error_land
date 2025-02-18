@@ -50,24 +50,24 @@ fn main() -> Result<(), ErrorMain> {
         _ => registry.with(PrettyLayer).init(), //.with(JsonLayer).init(),
     };
 
-    _ = parse_single_float("./float_valid.txt")?;
+    _ = parse_single_float("./sample_float/valid.txt")?;
 
-    _ = parse_single_float("./float_invalid.txt").unwrap_or_else(|err| {
+    _ = parse_single_float("./sample_float/invalid.txt").unwrap_or_else(|err| {
         warn!("{err}; Continue with default value");
         f64::default()
     });
 
-    _ = parse_single_float("./float_empty.txt").unwrap_or_else(|err| {
+    _ = parse_single_float("./sample_float/empty.txt").unwrap_or_else(|err| {
         warn!("{err}; Continue with default value");
         f64::default()
     });
 
-    _ = parse_single_float("./float_whitespace.txt").unwrap_or_else(|err| {
+    _ = parse_single_float("./sample_float/whitespace.txt").unwrap_or_else(|err| {
         warn!("{err}; Continue with default value");
         f64::default()
     });
 
-    _ = parse_single_float("./do_not_exist.txt")?;
+    _ = parse_single_float("./sample_float/does_not_exist.txt")?;
 
     info!("We do not get here");
     Ok(())
