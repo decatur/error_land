@@ -11,7 +11,7 @@ macro_rules! err_struct {
             #[inline(always)]
             pub fn msg(msg: String) -> Self {
                 let caller = std::panic::Location::caller().to_string();
-                tracing::error!(caller=caller, message=msg);
+                tracing::error!(caller=caller, message=format!("{} {msg}", stringify!($target)));
                 $target(msg)
             }
 
@@ -45,7 +45,7 @@ macro_rules! err_struct {
             fn from(e: E) -> Self {
                 // let caller = std::panic::Location::caller().to_string();
                 // error!(caller=caller, message=e.to_string());
-                Self::msg(e.to_string())
+                Self::msg(format!("{}", e))
             }
         }
     };

@@ -7,8 +7,10 @@ use std::fs;
 err_struct!(ReadFileError);
 fn read_file(path: &str) -> Result<String, ReadFileError> {
     let data = fs::read_to_string(path)?;
-    if data.trim().len() == 0 {
-        Err(ReadFileError("File was empty".to_owned()))
+    if data.len() == 0 {
+        Err(ReadFileError::msg("File was empty".to_owned()))
+    } else if data.trim().len() == 0 {
+        Err(ReadFileError::loc())
     } else {
         Ok(data)
     }
@@ -22,6 +24,8 @@ fn parse_single_float(path: &str) -> Result<f64, ParseError> {
 
 err_struct!(ParseError => ErrorMain);
 fn main() -> Result<(), ErrorMain> {
+    // let buffers = Arc::new(Mutex::new(Vec::new()));
+    // PrettyLayer { buffers: buffers.clone() }
     let registry = tracing_subscriber::registry();
     match std::env::var("LOG_FORMAT") {
         Ok(format) if format == "json" => registry.with(JsonLayer).init(),
@@ -30,10 +34,22 @@ fn main() -> Result<(), ErrorMain> {
 
     _ = parse_single_float("./float_valid.txt")?;
 
-    _ = parse_single_float("./float_invalid.txt").unwrap_or_else(|_err| {
-        warn!("Continue with default value");
+    _ = parse_single_float("./float_invalid.txt").unwrap_or_else(|err| {
+        warn!("{err}; Continue with default value");
         f64::default()
     });
+
+    _ = parse_single_float("./float_empty.txt").unwrap_or_else(|err| {
+        warn!("{err}; Continue with default value");
+        f64::default()
+    });
+
+    _ = parse_single_float("./float_whitespace.txt").unwrap_or_else(|err| {
+        warn!("{err}; Continue with default value");
+        f64::default()
+    });
+
+    // dbg!("{}", buffers);
 
     _ = parse_single_float("./do_not_exist.txt")?;
 
