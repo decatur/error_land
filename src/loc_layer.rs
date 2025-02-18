@@ -130,7 +130,7 @@ impl tracing::field::Visit for JsonVisitor {
     }
 }
 
-pub struct PrettyLayer;
+pub struct PrettyLayer; //{ pub buffers: Arc<Mutex<Vec<String>>>, }
 
 impl<S> Layer<S> for PrettyLayer
 where
@@ -175,6 +175,8 @@ where
             event.record(&mut visitor);
             visitor.buf
         };
+        
+        //self.buffers.lock().unwrap().push(String::from_utf8(buf.buffer().to_vec()).unwrap());
 
         buf.write_all(b"\n").unwrap();
         if let Err(e) = std::io::stdout()
@@ -183,6 +185,8 @@ where
         {
             panic!("failed writing to stdout: {}", e);
         }
+
+        
     }
 }
 
