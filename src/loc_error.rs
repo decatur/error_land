@@ -4,35 +4,14 @@
 macro_rules! err_struct {
     ($target: ident) => {
         #[derive(Debug)]
-        pub struct $target(String);
-
-        impl $target {
-            #[track_caller]
-            #[inline(always)]
-            pub fn msg(msg: String) -> Self {
-                let caller = std::panic::Location::caller().to_string();
-                tracing::error!(caller=caller, message=format!("{} {msg}", stringify!($target)));
-                $target(msg)
-            }
-
-            #[track_caller]
-            #[inline(always)]
-            pub fn silent(msg: String) -> Self {
-                $target(msg)
-            }
-
-            #[track_caller]
-            #[inline(always)]
-            pub fn loc() -> Self {
-                let caller = std::panic::Location::caller().to_string();
-                tracing::error!(caller=caller);
-                $target("".to_owned())
-            }
+        pub struct $target {
+            pub msg: String,
+            pub initiator: bool,
         }
 
         impl std::fmt::Display for $target {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{} {}", stringify!($target), self.0)
+                write!(f, "{} {}", stringify!($target), self.msg)
             }
         }
 
@@ -43,34 +22,38 @@ macro_rules! err_struct {
             #[track_caller]
             #[inline(always)]
             fn from(e: E) -> Self {
-                // let caller = std::panic::Location::caller().to_string();
-                // error!(caller=caller, message=e.to_string());
-                Self::msg(format!("{}", e))
+                let caller = std::panic::Location::caller().to_string();
+                tracing::error!(caller=caller, message=e.to_string());
+                Self { msg: format!("{}", e), initiator: false }
             }
         }
     };
     ($($source:ident),+ => $target:ident) => {
         err_struct!($target);
         $(
-            err_from!($source, $target);
+            err_from!($source => $target);
         )+
 
       };
 }
 
-/// A call to `err_from(B, C)` implements `From<B> for C` AND outputs the location of the caller.
+/// A call to `err_from(B, C)` implements `From<B> for C` AND logs the location of the caller.
 #[macro_export]
 macro_rules! err_from {
-    ($source: ident, $target: ident) => {
+    ($($source:ident),+ => $target: ident) => {
+        $(
         impl From<$source> for $target {
             #[track_caller]
             fn from(error: $source) -> Self {
-                // let caller = std::panic::Location::caller().to_string();
-                // tracing::error!(caller=caller
-                // //    , message=error.to_string()
-                // );
-                Self::silent(error.to_string())
+                let caller = std::panic::Location::caller().to_string();
+                if error.initiator {
+                    tracing::error!(caller=caller, message=error.to_string());
+                } else {
+                    tracing::error!(caller=caller);
+                }
+                Self {msg: error.to_string(), initiator: false }
             }
         }
+        )+
     };
 }

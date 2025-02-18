@@ -2,15 +2,33 @@ use error_land::{err_from, err_struct, JsonLayer, PrettyLayer};
 use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use std::fs;
+use std::{fmt, fs};
+
+#[derive(Debug)]
+struct Error(String);
+
+impl Error {
+    fn new(msg: impl Into<String>) -> Self {
+        Self(msg.into())
+    }
+    
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for Error {}
 
 err_struct!(ReadFileError);
 fn read_file(path: &str) -> Result<String, ReadFileError> {
     let data = fs::read_to_string(path)?;
     if data.len() == 0 {
-        Err(ReadFileError::msg("File was empty".to_owned()))
+        Err(Error::new("File was empty"))?
     } else if data.trim().len() == 0 {
-        Err(ReadFileError::loc())
+        Err(Error::new("File only has whitespace"))?
     } else {
         Ok(data)
     }
@@ -48,8 +66,6 @@ fn main() -> Result<(), ErrorMain> {
         warn!("{err}; Continue with default value");
         f64::default()
     });
-
-    // dbg!("{}", buffers);
 
     _ = parse_single_float("./do_not_exist.txt")?;
 
