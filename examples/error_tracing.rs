@@ -41,16 +41,11 @@ fn parse_single_float(path: &str) -> Result<f64, ParseError> {
 
 err_struct!(ParseError => ErrorMain);
 fn main() -> Result<(), ErrorMain> {
-    // let buffers = Arc::new(Mutex::new(Vec::new()));
-    // PrettyLayer { buffers: buffers.clone() }
     // let registry = tracing_subscriber::registry();
     // match std::env::var("LOG_FORMAT") {
     //     Ok(format) if format == "json" => registry.with(JsonLayer).init(),
     //     _ => registry.with(PrettyLayer).init(), //.with(JsonLayer).init(),
     // };
-
-    // tracing_subscriber::registry().with(tracing_subscriber::fmt::layer().pretty())
-    // .init();
 
     let fmt_layer = tracing_subscriber::fmt::layer().event_format(PrettyFormatter);
 

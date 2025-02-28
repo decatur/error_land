@@ -1,6 +1,6 @@
 use std::fmt;
 
-use tracing::{Event, Subscriber};
+use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::{
     fmt::{format, FmtContext, FormatEvent, FormatFields},
     registry::LookupSpan,
@@ -22,10 +22,16 @@ where
         mut writer: format::Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
-        let now = UtcDateTime::now().unwrap();
-        // Format values from the event's's metadata:
+        let now = &UtcDateTime::now().unwrap().to_string()[0..19];
         let metadata = event.metadata();
-        write!(&mut writer, "{} {}: ", now, metadata.level())?;
+        let level = metadata.level();
+        let level = if *level == Level::ERROR {
+            format!("\x1b[91m{}\x1b[0m", level)
+        } else {
+            format!("\x1b[92m{:^5}\x1b[0m", level)
+        };
+
+        write!(&mut writer, "{}Z {}: ", now, level)?;
 
         let mut visitor = PrettyVisitor {
             writer,
@@ -70,6 +76,7 @@ impl tracing::field::Visit for PrettyVisitor<'_> {
         _field: &tracing::field::Field,
         value: &(dyn std::error::Error + 'static),
     ) {
+        assert!(self.msg.is_none());
         let r = value.downcast_ref::<Thing>();
         if let Some(r) = r {
             self.errors = r.inner.clone();
