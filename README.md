@@ -60,6 +60,3 @@ In the generated `From` impl, we use `#[track_caller]` to output [file, line and
 * https://internals.rust-lang.org/t/async-debugging-logical-stack-traces-setting-goals-collecting-examples/15547/2
 
 
-<div>Foo <span style="color:red">sdsdsd</span></div>
-<div style="margin-left:2em">Foo <span style="color:red">sdsdsd</span></div>
-
