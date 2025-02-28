@@ -3,7 +3,7 @@ use serde_json::json;
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry};
 
-use std::{fmt, fs};
+use std::{fmt, fs, process::Termination};
 
 #[derive(Debug)]
 struct Error(String);
@@ -41,16 +41,38 @@ fn parse_single_float(path: &str) -> Result<f64, ParseError> {
 }
 
 err_struct!(ParseError => ErrorMain);
-fn main() -> Result<(), ErrorMain> {
-    // let registry = tracing_subscriber::registry();
-    // match std::env::var("LOG_FORMAT") {
-    //     Ok(format) if format == "json" => registry.with(JsonLayer).init(),
-    //     _ => registry.with(PrettyLayer).init(), //.with(JsonLayer).init(),
-    // };
 
-    let fmt_layer = tracing_subscriber::fmt::layer().event_format(JsonFormatter);
+struct T(Option<ErrorMain>);
 
-    Registry::default().with(fmt_layer).init();
+impl Termination for T {
+    fn report(self) -> std::process::ExitCode {
+        match self.0 {
+            Some(err) => {
+                error!(error = err.to_error(), termination = true);
+                std::process::ExitCode::FAILURE
+            }
+            None => std::process::ExitCode::SUCCESS,
+        }
+    }
+}
+
+fn main() -> T {
+    match major() {
+        Ok(_) => T(None),
+        Err(err) => T(Some(err)),
+    }
+}
+
+fn major() -> Result<(), ErrorMain> {
+    let layer = tracing_subscriber::fmt::layer();
+    match std::env::var("LOG_FORMAT") {
+        Ok(format) if format == "json" => Registry::default()
+            .with(layer.event_format(JsonFormatter))
+            .init(),
+        _ => Registry::default()
+            .with(layer.event_format(PrettyFormatter))
+            .init(),
+    };
 
     let doc = json!({
         "code": 200,
@@ -82,6 +104,5 @@ fn main() -> Result<(), ErrorMain> {
 
     _ = parse_single_float("./sample_float/does_not_exist.txt")?;
 
-    info!("We do not get here");
-    Ok(())
+    unreachable!();
 }
