@@ -18,8 +18,7 @@ tz-rs = "0.7.0"
 [dependencies.tracing-subscriber]
 version = "0.3"
 default-features = false
-# pretty needs fmt and ansi
-features = [ "fmt", "ansi", "registry" ]
+features = [ "fmt", "registry" ]
 
 
 

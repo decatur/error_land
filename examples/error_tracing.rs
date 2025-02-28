@@ -1,5 +1,6 @@
-use error_land::{err_from, err_struct, PrettyFormatter};
-use tracing::{info, warn};
+use error_land::{err_from, err_struct, JsonFormatter, PrettyFormatter};
+use serde_json::json;
+use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry};
 
 use std::{fmt, fs};
@@ -47,9 +48,17 @@ fn main() -> Result<(), ErrorMain> {
     //     _ => registry.with(PrettyLayer).init(), //.with(JsonLayer).init(),
     // };
 
-    let fmt_layer = tracing_subscriber::fmt::layer().event_format(PrettyFormatter);
+    let fmt_layer = tracing_subscriber::fmt::layer().event_format(JsonFormatter);
 
     Registry::default().with(fmt_layer).init();
+
+    let doc = json!({
+        "code": 200,
+        "success": true,
+        "payload": {
+            "msg": "foobar"
+        }
+    });
 
     _ = parse_single_float("./sample_float/valid.txt")?;
 
@@ -61,13 +70,13 @@ fn main() -> Result<(), ErrorMain> {
 
     _ = parse_single_float("./sample_float/empty.txt").unwrap_or_else(|err| {
         let else_value = 2.;
-        warn!(error = err.to_error(), "Continue with {}", else_value);
+        warn!(error = err.to_error(), "Continue \"with {}", else_value);
         else_value
     });
 
     _ = parse_single_float("./sample_float/whitespace.txt").unwrap_or_else(|err| {
         let else_value = 3.;
-        warn!(error = err.to_error(), "Continue with {}", else_value);
+        error!(error = err.to_error(), json = %doc, "Continue with {}", else_value);
         else_value
     });
 

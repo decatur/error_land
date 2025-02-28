@@ -60,6 +60,12 @@ macro_rules! err_struct {
             }
         }
 
+        // impl std::fmt::Debug for $target {
+        //     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        //         write!(f, "{{\"msg\": \"{}\"}}", self.msg)
+        //     }
+        // }
+
         // Note that $target must not implement std::error::Error because
         // From trait has blanket implementation. of blanket impl<T> From<T> for T
 

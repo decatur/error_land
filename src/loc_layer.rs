@@ -131,6 +131,8 @@ where
         let level = event.metadata().level();
         let level = if *level == Level::ERROR {
             format!("\x1b[91m{}\x1b[0m", level)
+        } else if *level == Level::WARN {
+            format!("\x1b[93m{:^5}\x1b[0m", level)
         } else {
             format!("\x1b[92m{:^5}\x1b[0m", level)
         };
