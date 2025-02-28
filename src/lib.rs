@@ -1,6 +1,9 @@
 mod loc_error;
+mod loc_formater;
 mod loc_layer;
 
+pub use loc_error::{Stack, Thing};
+pub use loc_formater::PrettyFormatter;
 pub use loc_layer::{JsonLayer, PrettyLayer};
 
 /*

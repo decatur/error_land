@@ -39,28 +39,14 @@ where
         write(&mut buf, format_args!("{{\"time\":\"{}\"", now));
         write(&mut buf, format_args!(", \"level\":\"{}\"", level));
 
-        let mut buf = if event.fields().any(|field| field.name() == "caller") {
-            let mut visitor = MessageVisitor {
-                message: None,
-                caller: None,
-            };
-            event.record(&mut visitor);
-            let name = visitor.caller.unwrap();
-            write(&mut buf, format_args!(", \"name\":\"{}\"", name));
+        write(
+            &mut buf,
+            format_args!(", \"name\":\"{}\"", event.metadata().name()),
+        );
+        let mut visitor = JsonVisitor { buf };
+        event.record(&mut visitor);
+        let mut buf = visitor.buf;
 
-            if let Some(message) = visitor.message {
-                write(&mut buf, format_args!(", \"message\":\"{}\"", message));
-            }
-            buf
-        } else {
-            write(
-                &mut buf,
-                format_args!(", \"name\":\"{}\"", event.metadata().name()),
-            );
-            let mut visitor = JsonVisitor { buf };
-            event.record(&mut visitor);
-            visitor.buf
-        };
         buf.write_all(b"}\n").unwrap();
         if let Err(e) = std::io::stdout()
             .lock()
@@ -151,33 +137,14 @@ where
 
         let mut buf = BufWriter::new(Vec::new());
 
-        let mut buf = if event.fields().any(|field| field.name() == "caller") {
-            let mut visitor = MessageVisitor {
-                message: None,
-                caller: None,
-            };
-            event.record(&mut visitor);
-            let name = visitor.caller.unwrap();
-            if let Some(message) = visitor.message {
-                write(
-                    &mut buf,
-                    format_args!("{} {} {} {}", now, level, name, message),
-                );
-            } else {
-                write(&mut buf, format_args!("{} {} {}", now, level, name));
-            }
+        let name = event.metadata().name();
+        write(&mut buf, format_args!("{} {} {}", now, level, name));
+        let mut visitor = PrettyVisitor { buf };
+        event.record(&mut visitor);
+        let mut buf = visitor.buf;
 
-            buf
-        } else {
-            let name = event.metadata().name();
-            write(&mut buf, format_args!("{} {} {}", now, level, name));
-            let mut visitor = PrettyVisitor { buf };
-            event.record(&mut visitor);
-            visitor.buf
-        };
-        
         //self.buffers.lock().unwrap().push(String::from_utf8(buf.buffer().to_vec()).unwrap());
-
+        buf.write_all(b"\n##########").unwrap();
         buf.write_all(b"\n").unwrap();
         if let Err(e) = std::io::stdout()
             .lock()
@@ -185,26 +152,7 @@ where
         {
             panic!("failed writing to stdout: {}", e);
         }
-
-        
     }
-}
-
-struct MessageVisitor {
-    message: Option<String>,
-    caller: Option<String>,
-}
-
-impl tracing::field::Visit for MessageVisitor {
-    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        if field.name() == "message" {
-            self.message = Some(value.to_owned());
-        } else if field.name() == "caller" {
-            self.caller = Some(value.to_owned());
-        }
-    }
-
-    fn record_debug(&mut self, _field: &tracing::field::Field, _value: &dyn std::fmt::Debug) {}
 }
 
 struct PrettyVisitor {
@@ -212,6 +160,14 @@ struct PrettyVisitor {
 }
 
 impl tracing::field::Visit for PrettyVisitor {
+    fn record_error(
+        &mut self,
+        _field: &tracing::field::Field,
+        value: &(dyn std::error::Error + 'static),
+    ) {
+        write(&mut self.buf, format_args!("\nrecord_error{:?};", value));
+    }
+
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
         write(&mut self.buf, format_args!(" {}={};", field.name(), value));
     }
@@ -219,7 +175,7 @@ impl tracing::field::Visit for PrettyVisitor {
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
         write(
             &mut self.buf,
-            format_args!(" {}={:?};", field.name(), value),
+            format_args!("record_debug {}={:?};", field.name(), value),
         );
     }
 }

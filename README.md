@@ -57,3 +57,4 @@ In the generated `From` impl, we use `#[track_caller]` to output [file, line and
 * https://github.com/klebs6/klebs-general/tree/master/error-tree
 * https://github.com/bobozaur/transitive
 * https://github.com/steffahn/transitive_from
+* https://internals.rust-lang.org/t/async-debugging-logical-stack-traces-setting-goals-collecting-examples/15547/2

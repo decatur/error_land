@@ -1,6 +1,6 @@
-use error_land::{err_from, err_struct, JsonLayer, PrettyLayer};
+use error_land::{err_from, err_struct, PrettyFormatter};
 use tracing::{info, warn};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry};
 
 use std::{fmt, fs};
 
@@ -11,7 +11,6 @@ impl Error {
     fn new(msg: impl Into<String>) -> Self {
         Self(msg.into())
     }
-    
 }
 
 impl fmt::Display for Error {
@@ -44,27 +43,37 @@ err_struct!(ParseError => ErrorMain);
 fn main() -> Result<(), ErrorMain> {
     // let buffers = Arc::new(Mutex::new(Vec::new()));
     // PrettyLayer { buffers: buffers.clone() }
-    let registry = tracing_subscriber::registry();
-    match std::env::var("LOG_FORMAT") {
-        Ok(format) if format == "json" => registry.with(JsonLayer).init(),
-        _ => registry.with(PrettyLayer).init(), //.with(JsonLayer).init(),
-    };
+    // let registry = tracing_subscriber::registry();
+    // match std::env::var("LOG_FORMAT") {
+    //     Ok(format) if format == "json" => registry.with(JsonLayer).init(),
+    //     _ => registry.with(PrettyLayer).init(), //.with(JsonLayer).init(),
+    // };
+
+    // tracing_subscriber::registry().with(tracing_subscriber::fmt::layer().pretty())
+    // .init();
+
+    let fmt_layer = tracing_subscriber::fmt::layer().event_format(PrettyFormatter);
+
+    Registry::default().with(fmt_layer).init();
 
     _ = parse_single_float("./sample_float/valid.txt")?;
 
     _ = parse_single_float("./sample_float/invalid.txt").unwrap_or_else(|err| {
-        warn!("{err}; Continue with default value");
-        f64::default()
+        let else_value = 1.;
+        warn!(error = err.to_error(), "Continue with {}", else_value);
+        else_value
     });
 
     _ = parse_single_float("./sample_float/empty.txt").unwrap_or_else(|err| {
-        warn!("{err}; Continue with default value");
-        f64::default()
+        let else_value = 2.;
+        warn!(error = err.to_error(), "Continue with {}", else_value);
+        else_value
     });
 
     _ = parse_single_float("./sample_float/whitespace.txt").unwrap_or_else(|err| {
-        warn!("{err}; Continue with default value");
-        f64::default()
+        let else_value = 3.;
+        warn!(error = err.to_error(), "Continue with {}", else_value);
+        else_value
     });
 
     _ = parse_single_float("./sample_float/does_not_exist.txt")?;
