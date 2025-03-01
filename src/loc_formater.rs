@@ -7,7 +7,7 @@ use tracing_subscriber::{
 };
 use tz::UtcDateTime;
 
-use crate::Thing;
+use crate::CoreError;
 
 pub struct PrettyFormatter;
 
@@ -79,7 +79,7 @@ impl tracing::field::Visit for PrettyVisitor<'_> {
         value: &(dyn std::error::Error + 'static),
     ) {
         assert!(self.msg.is_none());
-        let r = value.downcast_ref::<Thing>();
+        let r = value.downcast_ref::<CoreError>();
         if let Some(r) = r {
             self.errors = r.inner.clone();
             self.msg = Some(r.msg.clone());
@@ -175,7 +175,7 @@ impl tracing::field::Visit for JsonVisitor<'_> {
         value: &(dyn std::error::Error + 'static),
     ) {
         assert!(self.msg.is_none());
-        let r = value.downcast_ref::<Thing>();
+        let r = value.downcast_ref::<CoreError>();
         if let Some(r) = r {
             self.errors = r.inner.clone();
             self.msg = Some(r.msg.clone());

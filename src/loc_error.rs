@@ -12,25 +12,18 @@ impl Stack {
 }
 
 #[derive(Debug)]
-pub struct Thing {
+pub struct CoreError {
     pub msg: String,
     pub inner: Vec<String>,
 }
 
-impl Error for Thing {}
+impl Error for CoreError {}
 
-impl fmt::Display for Thing {
+impl fmt::Display for CoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.inner)
     }
 }
-
-// impl Value for Stack {
-//     /// Visits this value with the given `Visitor`.
-//     fn record(&self, key: &Field, visitor: &mut dyn Visit) {
-//         visitor.record_debug(key, &self.inner);
-//     }
-// }
 
 /// A macro called e.g. as `err_struct(A, B => C)` will define a public struct by name `C` and implement `From<A> for C` and `From<B> for C`.
 /// The from types are optional, and `err_struct(A, B => C)` equates to `err_struct(A, B => C)`, `err_from(A, C)` and `err_from(B, C)`.
@@ -44,8 +37,8 @@ macro_rules! err_struct {
         }
 
         impl $target {
-            pub fn to_error(&self) -> Box<dyn std::error::Error + 'static> {
-                Box::new(error_land::Thing { msg: self.msg.clone(), inner: self.stack.inner.clone() })
+            pub fn to_error(self) -> Box<dyn std::error::Error + 'static> {
+                Box::new(error_land::CoreError { msg: self.msg, inner: self.stack.inner })
             }
         }
 
