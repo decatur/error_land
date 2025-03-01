@@ -11,10 +11,22 @@ use std::{error::Error, fmt};
 //     }
 // }
 
+#[derive(Debug, Clone)]
+pub struct StackItem {
+    pub msg: String,
+    pub location: String,
+}
+
+impl fmt::Display for StackItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {}", self.location, self.msg)
+    }
+}
+
 #[derive(Debug)]
 pub struct CoreError {
     pub msg: String,
-    pub inner: Vec<String>,
+    pub inner: Vec<StackItem>,
 }
 
 impl Error for CoreError {}
@@ -33,7 +45,7 @@ macro_rules! err_struct {
         #[derive(Debug)]
         pub struct $target {
             pub msg: String,
-            pub inner: Vec<String>,
+            pub inner: Vec<error_land::StackItem>,
         }
 
         impl $target {
@@ -70,7 +82,7 @@ macro_rules! err_struct {
                 let caller = std::panic::Location::caller().to_string();
                 //tracing::error!(caller=caller, message=e.to_string());
                 //Self { msg: format!("{}", e), stack: error_land::Stack::new(vec![format!("{} {}", e, caller)]) }
-                Self { msg: format!("{}", e), inner: vec![caller] }
+                Self { msg: format!("duplicate {}", e), inner: vec![error_land::StackItem { msg:format!("from {:?} {}", e, e), location: caller}] }
             }
         }
     };
@@ -95,7 +107,7 @@ macro_rules! err_from {
                 let msg = error.to_string();
                 let mut inner = error.inner;
                 //stack.inner.push(format!("{} {}", msg.clone(), caller));
-                inner.push(caller);
+                inner.push(error_land::StackItem{msg: format!("From {} {}", stringify!($target), msg), location:caller});
                 Self {msg, inner}
             }
         }

@@ -86,7 +86,7 @@ fn major() -> Result<(), ErrorMain> {
 
     _ = parse_single_float("./sample_float/invalid.txt").unwrap_or_else(|err| {
         let else_value = 1.;
-        warn!(error = err.to_error(), "Continue with {}", else_value);
+        warn!(error = err.to_error(), else_value, "Continue");
         else_value
     });
 

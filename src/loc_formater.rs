@@ -7,7 +7,7 @@ use tracing_subscriber::{
 };
 use tz::UtcDateTime;
 
-use crate::CoreError;
+use crate::{loc_error::StackItem, CoreError};
 
 pub struct PrettyFormatter;
 
@@ -42,18 +42,19 @@ where
         };
         event.record(&mut visitor);
         let mut writer = visitor.writer;
-        if let Some(msg) = visitor.msg {
-            writer.write_str(&format!("\n    {}", msg))?;
-        }
+        // if let Some(msg) = visitor.msg {
+        //     writer.write_str(&format!("\n    {}", msg))?;
+        // }
 
         for error in visitor.errors {
             writer.write_str(&format!("\n    {}", error))?;
         }
         write!(
             &mut writer,
-            "\n    {}:{}",
+            "\n    {}:{} {}",
             metadata.file().unwrap_or("None"),
-            metadata.line().unwrap_or(0)
+            metadata.line().unwrap_or(0),
+            visitor.msg.unwrap_or("None".to_owned()),
         )?;
 
         writeln!(writer)
@@ -62,15 +63,19 @@ where
 
 struct PrettyVisitor<'a> {
     writer: format::Writer<'a>,
-    errors: Vec<String>,
+    errors: Vec<StackItem>,
     msg: Option<String>,
 }
 
 impl tracing::field::Visit for PrettyVisitor<'_> {
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn fmt::Debug) {
+        if field.name() == "message" {
+            self.msg = Some(format!("{:?}", value));
+        } else {
         self.writer
             .write_str(&format!("{}={:?}; ", field.name(), value))
             .unwrap();
+        }
     }
 
     fn record_error(
@@ -78,13 +83,13 @@ impl tracing::field::Visit for PrettyVisitor<'_> {
         _field: &tracing::field::Field,
         value: &(dyn std::error::Error + 'static),
     ) {
-        assert!(self.msg.is_none());
+        
         let r = value.downcast_ref::<CoreError>();
         if let Some(r) = r {
             self.errors = r.inner.clone();
-            self.msg = Some(r.msg.clone());
+            //self.msg = Some(r.msg.clone());
         } else {
-            self.msg = Some(format!("{}", value));
+            self.msg = Some(format!("Rumpelstilzchen {}", value));
         }
     }
 }
@@ -141,7 +146,7 @@ where
 
 struct JsonVisitor<'a> {
     writer: format::Writer<'a>,
-    errors: Vec<String>,
+    errors: Vec<StackItem>,
     msg: Option<String>,
 }
 
