@@ -78,7 +78,7 @@ fn major() -> Result<(), ErrorMain> {
         "code": 200,
         "success": true,
         "payload": {
-            "msg": "foobar"
+            "description": "foobar"
         }
     });
 

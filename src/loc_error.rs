@@ -1,15 +1,15 @@
 use std::{error::Error, fmt};
 
-#[derive(Debug)]
-pub struct Stack {
-    pub inner: Vec<String>,
-}
+// #[derive(Debug)]
+// pub struct Stack {
+//     pub inner: Vec<String>,
+// }
 
-impl Stack {
-    pub fn new(inner: Vec<String>) -> Self {
-        Stack { inner }
-    }
-}
+// impl Stack {
+//     pub fn new(inner: Vec<String>) -> Self {
+//         Stack { inner }
+//     }
+// }
 
 #[derive(Debug)]
 pub struct CoreError {
@@ -33,12 +33,13 @@ macro_rules! err_struct {
         #[derive(Debug)]
         pub struct $target {
             pub msg: String,
-            pub stack: error_land::Stack,
+            pub inner: Vec<String>,
         }
 
         impl $target {
+            /// Consuming conversion to a std::error::Error.
             pub fn to_error(self) -> Box<dyn std::error::Error + 'static> {
-                Box::new(error_land::CoreError { msg: self.msg, inner: self.stack.inner })
+                Box::new(error_land::CoreError { msg: self.msg, inner: self.inner })
             }
         }
 
@@ -69,7 +70,7 @@ macro_rules! err_struct {
                 let caller = std::panic::Location::caller().to_string();
                 //tracing::error!(caller=caller, message=e.to_string());
                 //Self { msg: format!("{}", e), stack: error_land::Stack::new(vec![format!("{} {}", e, caller)]) }
-                Self { msg: format!("{}", e), stack: error_land::Stack::new(vec![caller]) }
+                Self { msg: format!("{}", e), inner: vec![caller] }
             }
         }
     };
@@ -92,10 +93,10 @@ macro_rules! err_from {
             fn from(error: $source) -> Self {
                 let caller = std::panic::Location::caller().to_string();
                 let msg = error.to_string();
-                let mut stack = error.stack;
+                let mut inner = error.inner;
                 //stack.inner.push(format!("{} {}", msg.clone(), caller));
-                stack.inner.push(caller);
-                Self {msg, stack}
+                inner.push(caller);
+                Self {msg, inner}
             }
         }
         )+
