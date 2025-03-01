@@ -46,14 +46,22 @@ where
         //     writer.write_str(&format!("\n    {}", msg))?;
         // }
 
-        for error in visitor.errors {
-            writer.write_str(&format!("\n    {}", error))?;
+        for error in visitor.errors.iter() {
+            writer.write_str(&format!("\n    {}", &error))?;
         }
+
+        let target = if let Some(item) = visitor.errors.last() {
+            format!(" {}", &item.target)
+        } else {
+            "".to_owned()
+        };
+
         write!(
             &mut writer,
-            "\n    {}:{} {}",
+            "\n    {}:{}{} {}",
             metadata.file().unwrap_or("None"),
             metadata.line().unwrap_or(0),
+            target,
             visitor.msg.unwrap_or("None".to_owned()),
         )?;
 

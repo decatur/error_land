@@ -1,25 +1,16 @@
 use std::{error::Error, fmt};
 
-// #[derive(Debug)]
-// pub struct Stack {
-//     pub inner: Vec<String>,
-// }
-
-// impl Stack {
-//     pub fn new(inner: Vec<String>) -> Self {
-//         Stack { inner }
-//     }
-// }
-
 #[derive(Debug, Clone)]
 pub struct StackItem {
     pub msg: String,
     pub location: String,
+    pub source: String,
+    pub target: String,
 }
 
 impl fmt::Display for StackItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.location, self.msg)
+        write!(f, "{} {} {}", self.location, self.source, self.msg)
     }
 }
 
@@ -80,7 +71,15 @@ macro_rules! err_struct {
                 let caller = std::panic::Location::caller().to_string();
                 //tracing::error!(caller=caller, message=e.to_string());
                 //Self { msg: format!("{}", e), stack: error_land::Stack::new(vec![format!("{} {}", e, caller)]) }
-                Self { inner: vec![error_land::StackItem { msg:format!("from {:?} {}", e, e), location: caller}] }
+                // TODO: Can wo do better than to extract display AND debug? => only Display?
+                // Example std::io::error::ErrorKind
+                //     Debug: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+                //     Display: No such file or directory (os error 2)
+                // Example ParseFloatError:
+                //     Debug: ParseFloatError { kind: Invalid }
+                //     Display: invalid float literal
+                let stack_item = error_land::StackItem { msg:format!("{}", e), location: caller, source:format!("{:?}", e), target: stringify!($target).to_owned()};
+                Self { inner: vec![stack_item] }
             }
         }
     };
@@ -102,10 +101,12 @@ macro_rules! err_from {
             #[track_caller]
             fn from(error: $source) -> Self {
                 let caller = std::panic::Location::caller().to_string();
-                let msg = error.to_string();
+                //let msg = error.to_string();
                 let mut inner = error.inner;
                 //stack.inner.push(format!("{} {}", msg.clone(), caller));
-                inner.push(error_land::StackItem{msg: format!("From {} {}", stringify!($target), msg), location:caller});
+                // format!("{}->{}", stringify!($source), stringify!($target))
+                let stack_item = error_land::StackItem{msg: "".to_owned(), location:caller, source: stringify!($source).to_owned(), target: stringify!($target).to_owned(),};
+                inner.push(stack_item);
                 Self {inner}
             }
         }
