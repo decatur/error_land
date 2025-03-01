@@ -183,7 +183,6 @@ impl tracing::field::Visit for JsonVisitor<'_> {
         let r = value.downcast_ref::<CoreError>();
         if let Some(r) = r {
             self.errors = r.inner.clone();
-            self.msg = Some(r.msg.clone());
         } else {
             self.msg = Some(format!("{}", value));
         }

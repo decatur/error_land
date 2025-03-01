@@ -25,7 +25,6 @@ impl fmt::Display for StackItem {
 
 #[derive(Debug)]
 pub struct CoreError {
-    pub msg: String,
     pub inner: Vec<StackItem>,
 }
 
@@ -44,21 +43,20 @@ macro_rules! err_struct {
     ($target: ident) => {
         #[derive(Debug)]
         pub struct $target {
-            pub msg: String,
             pub inner: Vec<error_land::StackItem>,
         }
 
         impl $target {
             /// Consuming conversion to a std::error::Error.
             pub fn to_error(self) -> Box<dyn std::error::Error + 'static> {
-                Box::new(error_land::CoreError { msg: self.msg, inner: self.inner })
+                Box::new(error_land::CoreError { inner: self.inner })
             }
         }
 
         impl std::fmt::Display for $target {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 //write!(f, "FOOBAR {} {} {:?}", stringify!($target), self.msg, self.stack);
-                write!(f, "{} {}", stringify!($target), self.msg)
+                write!(f, "{}", stringify!($target))
                 // for item in self.stack.inner.clone() {
                 //     write!(f, "Display {item}");
                 // }
@@ -82,7 +80,7 @@ macro_rules! err_struct {
                 let caller = std::panic::Location::caller().to_string();
                 //tracing::error!(caller=caller, message=e.to_string());
                 //Self { msg: format!("{}", e), stack: error_land::Stack::new(vec![format!("{} {}", e, caller)]) }
-                Self { msg: format!("duplicate {}", e), inner: vec![error_land::StackItem { msg:format!("from {:?} {}", e, e), location: caller}] }
+                Self { inner: vec![error_land::StackItem { msg:format!("from {:?} {}", e, e), location: caller}] }
             }
         }
     };
@@ -108,7 +106,7 @@ macro_rules! err_from {
                 let mut inner = error.inner;
                 //stack.inner.push(format!("{} {}", msg.clone(), caller));
                 inner.push(error_land::StackItem{msg: format!("From {} {}", stringify!($target), msg), location:caller});
-                Self {msg, inner}
+                Self {inner}
             }
         }
         )+
