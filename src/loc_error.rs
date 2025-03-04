@@ -34,13 +34,13 @@ macro_rules! err_struct {
     ($target: ident) => {
         #[derive(Debug)]
         pub struct $target {
-            pub inner: Vec<error_land::StackItem>,
+            pub inner: Vec<$crate::StackItem>,
         }
 
         impl $target {
             /// Consuming conversion to a std::error::Error.
             pub fn to_error(self) -> Box<dyn std::error::Error + 'static> {
-                Box::new(error_land::CoreError { inner: self.inner })
+                Box::new($crate::CoreError { inner: self.inner })
             }
         }
 
@@ -70,7 +70,7 @@ macro_rules! err_struct {
             fn from(e: E) -> Self {
                 let caller = std::panic::Location::caller().to_string();
                 //tracing::error!(caller=caller, message=e.to_string());
-                //Self { msg: format!("{}", e), stack: error_land::Stack::new(vec![format!("{} {}", e, caller)]) }
+                //Self { msg: format!("{}", e), stack: $crate::Stack::new(vec![format!("{} {}", e, caller)]) }
                 // TODO: Can wo do better than to extract display AND debug? => only Display?
                 // Example std::io::error::ErrorKind
                 //     Debug: Os { code: 2, kind: NotFound, message: "No such file or directory" }
@@ -105,7 +105,7 @@ macro_rules! err_from {
                 let mut inner = error.inner;
                 //stack.inner.push(format!("{} {}", msg.clone(), caller));
                 // format!("{}->{}", stringify!($source), stringify!($target))
-                let stack_item = error_land::StackItem{msg: "".to_owned(), location:caller, source: stringify!($source).to_owned(), target: stringify!($target).to_owned(),};
+                let stack_item = $crate::StackItem{msg: "".to_owned(), location:caller, source: stringify!($source).to_owned(), target: stringify!($target).to_owned(),};
                 inner.push(stack_item);
                 Self {inner}
             }
