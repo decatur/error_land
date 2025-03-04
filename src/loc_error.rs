@@ -78,7 +78,7 @@ macro_rules! err_struct {
                 // Example ParseFloatError:
                 //     Debug: ParseFloatError { kind: Invalid }
                 //     Display: invalid float literal
-                let stack_item = error_land::StackItem { msg:format!("{}", e), location: caller, source:format!("{:?}", e), target: stringify!($target).to_owned()};
+                let stack_item = $crate::StackItem { msg: format!("{}", e), location: caller, source:format!("{:?}", e), target: stringify!($target).to_owned()};
                 Self { inner: vec![stack_item] }
             }
         }

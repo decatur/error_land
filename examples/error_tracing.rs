@@ -1,34 +1,17 @@
-use error_land::{err_from, err_struct, JsonFormatter, PrettyFormatter};
+use error_land::{err_from, err_struct, into_err, JsonFormatter, PrettyFormatter};
 use serde_json::json;
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry};
 
-use std::{fmt, fs, process::Termination};
-
-#[derive(Debug)]
-struct Error(String);
-
-impl Error {
-    fn new(msg: impl Into<String>) -> Self {
-        Self(msg.into())
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::error::Error for Error {}
+use std::process::ExitCode;
 
 err_struct!(ReadFileError);
 fn read_file(path: &str) -> Result<String, ReadFileError> {
-    let data = fs::read_to_string(path)?;
+    let data = std::fs::read_to_string(path)?;
     if data.len() == 0 {
-        Err(Error::new("File was empty"))?
+        Err(into_err("File was empty"))?
     } else if data.trim().len() == 0 {
-        Err(Error::new("File only has whitespace"))?
+        Err(into_err("File only has whitespace"))?
     } else {
         Ok(data)
     }
@@ -40,29 +23,17 @@ fn parse_single_float(path: &str) -> Result<f64, ParseError> {
     Ok(read_file(path)?.parse::<f64>()?)
 }
 
-err_struct!(ParseError => ErrorMain);
-
-struct T(Option<ErrorMain>);
-
-impl Termination for T {
-    fn report(self) -> std::process::ExitCode {
-        match self.0 {
-            Some(err) => {
-                error!(error = err.to_error(), termination = true);
-                std::process::ExitCode::FAILURE
-            }
-            None => std::process::ExitCode::SUCCESS,
+fn main() -> ExitCode {
+    match major() {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(err) => {
+            error!(error = err.to_error(), termination = true);
+            ExitCode::FAILURE
         }
     }
 }
 
-fn main() -> T {
-    match major() {
-        Ok(_) => T(None),
-        Err(err) => T(Some(err)),
-    }
-}
-
+err_struct!(ParseError => ErrorMain);
 fn major() -> Result<(), ErrorMain> {
     let layer = tracing_subscriber::fmt::layer();
     match std::env::var("LOG_FORMAT") {
