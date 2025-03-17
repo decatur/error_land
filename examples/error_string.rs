@@ -1,28 +1,13 @@
-use core::fmt;
+
 use std::process::ExitCode;
-
-struct ErrorString(String);
-
-impl fmt::Display for ErrorString {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl<E: std::error::Error> From<E> for ErrorString {
-    fn from(e: E) -> Self {
-        Self(e.to_string())
-    }
-}
-
-type Result<T> = std::result::Result<T, ErrorString>;
+use error_land::error_string::{Result, Error};
 
 fn read_file(path: &str) -> Result<String> {
     let data = std::fs::read_to_string(path)?;
     if data.len() == 0 {
-        Err(ErrorString("File was empty".to_owned()))?
+        Err(Error("File was empty".to_owned()))?
     } else if data.trim().len() == 0 {
-        Err(ErrorString("File only has whitespace".to_owned()))?
+        Err(Error("File only has whitespace".to_owned()))?
     } else {
         Ok(data)
     }

@@ -3,7 +3,7 @@ use serde_json::json;
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry};
 
-use std::process::ExitCode;
+use std::process::{ExitCode, Termination};
 
 err_struct!(ReadFileError);
 fn read_file(path: &str) -> Result<String, ReadFileError> {
@@ -23,7 +23,7 @@ fn parse_single_float(path: &str) -> Result<f64, ParseError> {
     Ok(read_file(path)?.parse::<f64>()?)
 }
 
-fn main() -> ExitCode {
+fn main() -> impl Termination {
     match major() {
         Ok(_) => ExitCode::SUCCESS,
         Err(err) => {

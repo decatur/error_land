@@ -1,3 +1,5 @@
+# This is work in progress. Please go away.
+
 Error handling in Rust is deep.
 The shallow part [enum Result<T, E>](https://doc.rust-lang.org/std/result/enum.Result.html) is part of the Rust language.
 It is easy to understand and well designed.
