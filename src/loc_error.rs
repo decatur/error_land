@@ -8,22 +8,16 @@ pub struct StackItem {
     pub target: String,
 }
 
-impl fmt::Display for StackItem {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {} {}", self.location, self.source, self.msg)
-    }
-}
-
 #[derive(Debug)]
 pub struct CoreError {
-    pub inner: Vec<StackItem>,
+    pub backtrace: Vec<StackItem>,
 }
 
 impl Error for CoreError {}
 
 impl fmt::Display for CoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.inner)
+        write!(f, "{:?}", self.backtrace)
     }
 }
 
@@ -34,32 +28,34 @@ macro_rules! err_struct {
     ($target: ident) => {
         #[derive(Debug)]
         pub struct $target {
-            pub inner: Vec<$crate::StackItem>,
+            backtrace: Vec<$crate::StackItem>,
         }
 
         impl $target {
             /// Consuming conversion to a std::error::Error.
             pub fn to_error(self) -> Box<dyn std::error::Error + 'static> {
-                Box::new($crate::CoreError { inner: self.inner })
+                Box::new($crate::CoreError { backtrace: self.backtrace })
             }
         }
 
         impl std::fmt::Display for $target {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 //write!(f, "FOOBAR {} {} {:?}", stringify!($target), self.msg, self.stack);
-                write!(f, "{}", stringify!($target))
-                // for item in self.stack.inner.clone() {
-                //     write!(f, "Display {item}");
-                // }
+                write!(f, "{{\"backtrace\":[")?;
+                for (index, item) in self.backtrace.clone().iter().enumerate() {
+                    if index > 0 {
+                        write!(f, ",")?;
+                    }
+                    write!(f, "{{\"source\":{},\"target\":{},\"msg\":{},\"location\":{}}}",
+                    serde_json::to_string(&item.source).unwrap(),
+                    serde_json::to_string(&item.target).unwrap(),
+                    serde_json::to_string(&item.msg).unwrap(),
+                    serde_json::to_string(&item.location).unwrap())?;
+                }
+                write!(f, "]}}")
                 //Ok(())
             }
         }
-
-        // impl std::fmt::Debug for $target {
-        //     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        //         write!(f, "{{\"msg\": \"{}\"}}", self.msg)
-        //     }
-        // }
 
         // Note that $target must not implement std::error::Error because
         // From trait has blanket implementation. of blanket impl<T> From<T> for T
@@ -69,17 +65,8 @@ macro_rules! err_struct {
             #[inline(always)]
             fn from(e: E) -> Self {
                 let caller = std::panic::Location::caller().to_string();
-                //tracing::error!(caller=caller, message=e.to_string());
-                //Self { msg: format!("{}", e), stack: $crate::Stack::new(vec![format!("{} {}", e, caller)]) }
-                // TODO: Can wo do better than to extract display AND debug? => only Display?
-                // Example std::io::error::ErrorKind
-                //     Debug: Os { code: 2, kind: NotFound, message: "No such file or directory" }
-                //     Display: No such file or directory (os error 2)
-                // Example ParseFloatError:
-                //     Debug: ParseFloatError { kind: Invalid }
-                //     Display: invalid float literal
                 let stack_item = $crate::StackItem { msg: format!("{}", e), location: caller, source:format!("{:?}", e), target: stringify!($target).to_owned()};
-                Self { inner: vec![stack_item] }
+                Self { backtrace: vec![stack_item] }
             }
         }
     };
@@ -101,13 +88,10 @@ macro_rules! err_from {
             #[track_caller]
             fn from(error: $source) -> Self {
                 let caller = std::panic::Location::caller().to_string();
-                //let msg = error.to_string();
-                let mut inner = error.inner;
-                //stack.inner.push(format!("{} {}", msg.clone(), caller));
-                // format!("{}->{}", stringify!($source), stringify!($target))
+                let mut backtrace = error.backtrace;
                 let stack_item = $crate::StackItem{msg: "".to_owned(), location:caller, source: stringify!($source).to_owned(), target: stringify!($target).to_owned(),};
-                inner.push(stack_item);
-                Self {inner}
+                backtrace.push(stack_item);
+                Self {backtrace}
             }
         }
         )+

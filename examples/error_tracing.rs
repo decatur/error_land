@@ -1,7 +1,6 @@
-use error_land::{err_from, err_struct, into_err, JsonFormatter, PrettyFormatter};
+use error_land::{as_display, as_value, err_from, err_struct, into_err, JsonFormatter};
 use serde_json::json;
-use tracing::{error, info, warn};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Registry};
+use tracing::{error, info, warn, Level};
 
 use std::process::{ExitCode, Termination};
 
@@ -24,10 +23,16 @@ fn parse_single_float(path: &str) -> Result<f64, ParseError> {
 }
 
 fn main() -> impl Termination {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .with_line_number(true)
+        .event_format(JsonFormatter { with_time: false })
+        .init();
+
     match major() {
         Ok(_) => ExitCode::SUCCESS,
         Err(err) => {
-            error!(error = err.to_error(), termination = true);
+            error!(error = as_display(err), termination = true);
             ExitCode::FAILURE
         }
     }
@@ -35,16 +40,6 @@ fn main() -> impl Termination {
 
 err_struct!(ParseError => ErrorMain);
 fn major() -> Result<(), ErrorMain> {
-    let layer = tracing_subscriber::fmt::layer();
-    match std::env::var("LOG_FORMAT") {
-        Ok(format) if format == "json" => Registry::default()
-            .with(layer.event_format(JsonFormatter))
-            .init(),
-        _ => Registry::default()
-            .with(layer.event_format(PrettyFormatter))
-            .init(),
-    };
-
     let doc = json!({
         "code": 200,
         "success": true,
@@ -57,19 +52,24 @@ fn major() -> Result<(), ErrorMain> {
 
     _ = parse_single_float("./sample_float/invalid.txt").unwrap_or_else(|err| {
         let else_value = 1.;
-        warn!(error = err.to_error(), else_value, "Continue");
+        warn!(error = as_display(err), else_value, "Continue");
         else_value
     });
 
     _ = parse_single_float("./sample_float/empty.txt").unwrap_or_else(|err| {
         let else_value = 2.;
-        warn!(error = err.to_error(), "Continue \"with {}", else_value);
+        warn!(error = as_display(err), "Continue \"with {}", else_value);
         else_value
     });
 
     _ = parse_single_float("./sample_float/whitespace.txt").unwrap_or_else(|err| {
         let else_value = 3.;
-        error!(error = err.to_error(), json = %doc, "Continue with {}", else_value);
+        error!(
+            error = as_display(err),
+            json = as_value(doc),
+            "Continue with {}",
+            else_value
+        );
         else_value
     });
 
